@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,12 +32,14 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     'rest_framework',
     'rest_framework.authtoken',
     'appointments',
@@ -44,10 +47,15 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
     'psycopg2',
+    'oauth2_provider',
+    'social_django',
 ]
+SITE_ID = 1
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -62,7 +70,7 @@ ROOT_URLCONF = 'appointment_scheduler.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR,"appointment-frontend/build")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -70,6 +78,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -129,9 +139,12 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
+        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',  # django-oauth-toolkit >= 1.0.0
+        'rest_framework_social_oauth2.authentication.SocialAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
     ],
 }
 GOOGLE_OAUTH2_CLIENT_ID = '589452167869-0mvvt9bk9d7q3n9eeea32m27npk3bjf9.apps.googleusercontent.com'
@@ -144,9 +157,18 @@ GOOGLE_CALENDAR_API_SCOPES = [
 ]
 
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
-    'allauth.socialaccount.providers.google.auth_backends.GoogleOAuth2Backend',
+    # 'allauth.socialaccount.providers.google.auth_backends.GoogleOAuth2Backend',
+    
+   'django.contrib.auth.backends.ModelBackend',
+#    # Google OAuth2
+#     'social_core.backends.google.GoogleOAuth2',
+
+#     # django-rest-framework-social-oauth2
+#     'rest_framework_social_oauth2.backends.DjangoOAuth2',
+
+#     # Django
+    'django.contrib.auth.backends.ModelBackend',
 ]
 
 # settings.py
@@ -184,8 +206,32 @@ SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
             'client_id': '589452167869-0mvvt9bk9d7q3n9eeea32m27npk3bjf9.apps.googleusercontent.com',
-            'secret': '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',
+            'secret': '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',
             'key': ''
+        },
+        # These are provider-specific settings that can only be
+        # listed here:
+        "SCOPE": [
+            "profile",
+            "email",
+            'https://www.googleapis.com/auth/calendar',
+        ],
+        "AUTH_PARAMS": {
+            "access_type": "offline",
         }
     }
 } 
+
+AUTH_USER_MODEL = 'appointments.Doctor'
+
+STATIC_URL = "static/"
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR,"appointment-frontend/build/static")
+]
+LOGIN_REDIRECT_URL = '/doctor-settings/'
+LOGIN_URL = '/doctor_auth/'
+LOGOUT_REDIRECT_URL = '/doctor-auth/'
+SOCIALACCOUNT_STORE_TOKENS = True
+SOCIALACCOUNT_LOGIN_ON_GET=True
+CORS_ORIGIN_ALLOW_ALL = True
+CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000']
